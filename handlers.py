@@ -183,6 +183,45 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(TEXTS["back"], callback_data=f"event|{sport_key}|{event_id}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await safe_edit(TEXTS["chosen_outcome"].format(outcome=o['name'], odds=o['price']), reply_markup=reply_markup)
+    elif query.data == "confirm_bet":
+        draft = context.user_data.get('pending_bet_draft')
+        if not draft:
+            await safe_edit(TEXTS["error_odds"])
+            return
+        sport_key = draft['sport_key']
+        event_id = draft['event_id']
+        outcome_name = draft['outcome_name']
+        odds = draft['odds']
+        amount = draft['amount']
+        events = fetch_events(sport_key)
+        event = next((e for e in events if str(e.get('id')) == str(event_id)), None)
+        if event:
+            event_name = f"{event.get('home_team', '?')} vs {event.get('away_team', '?')}"
+        else:
+            event_name = f"{sport_key}"
+        pending_bets = context.user_data.get("pending_bets", [])
+        bet_id = str(len(pending_bets) + 1)
+        bet_desc = f"{event_name}: {outcome_name}, Odds: {odds}, Amount: {amount} EUR"
+        pending_bets.append({"desc": bet_desc, "id": bet_id})
+        context.user_data["pending_bets"] = pending_bets
+        context.user_data["pending_bet_draft"] = None
+        await safe_edit(TEXTS["bet_confirmed"])
+        await start_menu(query.message.chat, context)
+        return
+    elif query.data == "edit_bet":
+        draft = context.user_data.get('pending_bet_draft')
+        if draft:
+            sport_key = draft['sport_key']
+            event_id = draft['event_id']
+            odds = fetch_odds(event_id, sport_key)
+            if not odds or not odds["outcomes"]:
+                await safe_edit(TEXTS["error_odds"])
+                return
+            keyboard = [[InlineKeyboardButton(TEXTS["back"], callback_data=f"event|{sport_key}|{event_id}")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            context.user_data["awaiting_bet_amount"] = True
+            await safe_edit(TEXTS["chosen_outcome"].format(outcome=draft['outcome_name'], odds=draft['odds']), reply_markup=reply_markup)
+        return
     else:
         await safe_edit(TEXTS["clicked"].format(data=query.data))
 
@@ -215,20 +254,58 @@ async def bet_amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         event_id = context.user_data.get("event_id", "?")
         outcome_name = selection.get("outcome_name", "?")
         odds = selection.get("odds", "?")
-        # Add to pending bets
+        # Show confirmation window before placing bet
+        context.user_data['pending_bet_draft'] = {
+            'sport_key': sport_key,
+            'event_id': event_id,
+            'outcome_name': outcome_name,
+            'odds': odds,
+            'amount': amount
+        }
+        # Fetch event details for human-readable name
+        events = fetch_events(sport_key)
+        event = next((e for e in events if str(e.get('id')) == str(event_id)), None)
+        if event:
+            event_name = f"{event.get('home_team', '?')} vs {event.get('away_team', '?')}"
+        else:
+            event_name = f"{sport_key}"
+        keyboard = [
+            [InlineKeyboardButton(TEXTS["confirm_bet_button"], callback_data="confirm_bet")],
+            [InlineKeyboardButton(TEXTS["edit_bet_button"], callback_data="edit_bet")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            TEXTS["confirm_bet"].format(event=event_name, outcome=outcome_name, odds=odds, amount=amount),
+            reply_markup=reply_markup
+        )
+        return
+    # In button_handler, handle confirm_bet and edit_bet callback_data
+    if query.data == "confirm_bet":
+        draft = context.user_data.get('pending_bet_draft')
+        if not draft:
+            await safe_edit(TEXTS["error_odds"])
+            return
+        sport_key = draft['sport_key']
+        event_id = draft['event_id']
+        outcome_name = draft['outcome_name']
+        odds = draft['odds']
+        amount = draft['amount']
+        events = fetch_events(sport_key)
+        event = next((e for e in events if str(e.get('id')) == str(event_id)), None)
+        if event:
+            event_name = f"{event.get('home_team', '?')} vs {event.get('away_team', '?')}"
+        else:
+            event_name = f"{sport_key}"
         pending_bets = context.user_data.get("pending_bets", [])
         bet_id = str(len(pending_bets) + 1)
-        bet_desc = f"{sport_key}: {outcome_name}, Odds: {odds}, Amount: {amount} EUR"
+        bet_desc = f"{event_name}: {outcome_name}, Odds: {odds}, Amount: {amount} EUR"
         pending_bets.append({"desc": bet_desc, "id": bet_id})
         context.user_data["pending_bets"] = pending_bets
-        try:
-            potential_win = float(amount) * float(odds)
-            win_str = TEXTS["potential_win"].format(potential_win=potential_win)
-        except Exception:
-            win_str = ""
-        await update.message.reply_text(
-            TEXTS["bet_placed"].format(outcome=outcome_name, odds=odds, amount=amount, win_str=win_str)
-        )
-        context.user_data["awaiting_bet_amount"] = False
-        context.user_data["bet_selection"] = None
-        await start_menu(update.effective_chat, context) 
+        context.user_data["pending_bet_draft"] = None
+        await safe_edit(TEXTS["bet_confirmed"])
+        await start_menu(query.message.chat, context)
+        return
+    if query.data == "edit_bet":
+        context.user_data["awaiting_bet_amount"] = True
+        await safe_edit(TEXTS["invalid_amount"])
+        return 
