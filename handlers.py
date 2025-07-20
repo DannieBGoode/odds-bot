@@ -3,12 +3,14 @@ from telegram.ext import ContextTypes, MessageHandler, filters
 from telegram.error import BadRequest
 from odds_api import fetch_sports, fetch_events, fetch_odds
 from texts import TEXTS
+from bet_history import show_bet_history
 
 async def start_menu(chat, context):
     keyboard = [
         [InlineKeyboardButton(TEXTS["choose_sport"], callback_data="choose_sport")],
         [InlineKeyboardButton(TEXTS["accepted_bets"], callback_data="accepted_bets")],
         [InlineKeyboardButton(TEXTS["pending_bets"], callback_data="pending_bets")],
+        [InlineKeyboardButton(TEXTS["bet_history"], callback_data="bet_history")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await chat.send_message(TEXTS["welcome"], reply_markup=reply_markup)
@@ -138,6 +140,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(TEXTS["cancel"], callback_data="cancel")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await safe_edit(TEXTS["choose_sport"], reply_markup=reply_markup)
+        return
     elif query.data.startswith("sport|"):
         _, sport_key = query.data.split("|", 1)
         context.user_data["sport_key"] = sport_key
@@ -151,6 +154,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(TEXTS["back"], callback_data="back_to_sports")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await safe_edit(TEXTS["choose_event"], reply_markup=reply_markup)
+        return
     elif query.data.startswith("event|"):
         _, sport_key, event_id = query.data.split("|", 2)
         context.user_data["sport_key"] = sport_key
@@ -165,6 +169,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(TEXTS["back"], callback_data=f"back_to_events|{sport_key}")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await safe_edit(TEXTS["choose_outcome"].format(bookmaker=odds['bookmaker']), reply_markup=reply_markup)
+        return
     elif query.data.startswith("odds|"):
         _, sport_key, event_id, outcome_idx = query.data.split("|", 3)
         odds = fetch_odds(event_id, sport_key)
@@ -183,6 +188,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(TEXTS["back"], callback_data=f"event|{sport_key}|{event_id}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await safe_edit(TEXTS["chosen_outcome"].format(outcome=o['name'], odds=o['price']), reply_markup=reply_markup)
+        return
     elif query.data == "confirm_bet":
         draft = context.user_data.get('pending_bet_draft')
         if not draft:
@@ -221,6 +227,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
             context.user_data["awaiting_bet_amount"] = True
             await safe_edit(TEXTS["chosen_outcome"].format(outcome=draft['outcome_name'], odds=draft['odds']), reply_markup=reply_markup)
+        return
+    if query.data == "bet_history":
+        await show_bet_history(query, context, safe_edit)
         return
     else:
         await safe_edit(TEXTS["clicked"].format(data=query.data))
