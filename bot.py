@@ -1,7 +1,8 @@
 import os
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from dotenv import load_dotenv
-from handlers import start, button_handler, bet_amount_handler, cancel
+from handlers import start, button_handler, cancel
+from choose_sport import handle_bet_amount_input
 
 load_dotenv()
 
@@ -12,6 +13,6 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bet_amount_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bet_amount_input))
     print("Bot is running...")
     app.run_polling() 
