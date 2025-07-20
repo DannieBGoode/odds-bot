@@ -5,6 +5,7 @@ from odds_api import fetch_sports, fetch_events, fetch_odds
 from texts import TEXTS
 from bet_history import show_bet_history, show_bet_detail
 from pending_bets import show_pending_bets, show_pending_cancel_confirm, handle_pending_cancel_confirm
+from accepted_bets import show_accepted_bets
 
 async def start_menu(chat, context):
     keyboard = [
@@ -42,19 +43,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_menu(query.message.chat, context)
         return
     if query.data == "accepted_bets":
-        accepted_bets = context.user_data.get("accepted_bets", [
-            {"desc": "EPL: Chelsea vs Arsenal, Home Win, 2.10, 100 EUR"},
-            {"desc": "La Liga: Real Madrid vs Barca, Draw, 3.20, 50 EUR"},
-        ])
-        text = TEXTS["accepted_bets_title"]
-        if accepted_bets:
-            for bet in accepted_bets:
-                text += f"- {bet['desc']}\n"
-        else:
-            text += TEXTS["no_accepted_bets"]
-        keyboard = [[InlineKeyboardButton(TEXTS["back"], callback_data="cancel")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await safe_edit(text, reply_markup=reply_markup)
+        await show_accepted_bets(query, context, safe_edit)
         return
     if query.data == "pending_bets":
         await show_pending_bets(query, context, safe_edit)
