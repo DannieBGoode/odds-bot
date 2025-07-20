@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes, MessageHandler, filters
 from telegram.error import BadRequest
 from odds_api import fetch_sports, fetch_events, fetch_odds
 from texts import TEXTS
-from bet_history import show_bet_history
+from bet_history import show_bet_history, show_bet_detail
 
 async def start_menu(chat, context):
     keyboard = [
@@ -229,7 +229,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit(TEXTS["chosen_outcome"].format(outcome=draft['outcome_name'], odds=draft['odds']), reply_markup=reply_markup)
         return
     if query.data == "bet_history":
+        context.user_data["bet_history_page"] = 0
         await show_bet_history(query, context, safe_edit)
+        return
+    if query.data.startswith("bet_history_page|"):
+        page = int(query.data.split("|", 1)[1])
+        context.user_data["bet_history_page"] = page
+        await show_bet_history(query, context, safe_edit)
+        return
+    if query.data.startswith("bet_detail|"):
+        _, bet_id, page = query.data.split("|", 2)
+        await show_bet_detail(query, context, safe_edit, bet_id, page)
         return
     else:
         await safe_edit(TEXTS["clicked"].format(data=query.data))

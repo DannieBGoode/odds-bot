@@ -36,4 +36,13 @@ TEXTS = {
     "bet_push": "➖ Push",
     "bet_profit": "💰 +{amount} EUR",
     "bet_loss_amt": "🔻 -{amount} EUR",
+    "bet_history_prev": "⬅️ Previous Page",
+    "bet_history_next": "Next Page ➡️",
+    "bet_history_back": "Back to History",
+    "bet_detail_date": "Date: {date}",
+    "bet_detail_event": "Event: {event}",
+    "bet_detail_outcome": "Outcome: {outcome}",
+    "bet_detail_odds": "Odds: {odds}",
+    "bet_detail_amount": "Amount: {amount} EUR",
+    "bet_detail_result": "Result: {result}  {pl}",
 } 
