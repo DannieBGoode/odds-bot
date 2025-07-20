@@ -212,4 +212,5 @@ async def bet_amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             f"Bet placed and pending!\nOutcome: {outcome_name}\nOdds: {odds}\nAmount: {amount} EUR\n{win_str}"
         )
         context.user_data["awaiting_bet_amount"] = False
-        context.user_data["bet_selection"] = None 
+        context.user_data["bet_selection"] = None
+        await start_menu(update.effective_chat, context) 
