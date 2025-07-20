@@ -4,6 +4,7 @@ from telegram.error import BadRequest
 from odds_api import fetch_sports, fetch_events, fetch_odds
 from texts import TEXTS
 from bet_history import show_bet_history, show_bet_detail
+from pending_bets import show_pending_bets, show_pending_cancel_confirm, handle_pending_cancel_confirm
 
 async def start_menu(chat, context):
     keyboard = [
@@ -56,58 +57,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(text, reply_markup=reply_markup)
         return
     if query.data == "pending_bets":
-        pending_bets = context.user_data.get("pending_bets", [
-            {"desc": "Serie A: Inter vs Milan, Away Win, 2.80, 75 EUR", "id": "1"},
-            {"desc": "Bundesliga: Bayern vs Dortmund, Home Win, 1.90, 120 EUR", "id": "2"},
-        ])
-        text = TEXTS["pending_bets_title"]
-        keyboard = []
-        if pending_bets:
-            for bet in pending_bets:
-                text += f"- {bet['desc']}\n"
-                keyboard.append([InlineKeyboardButton(TEXTS["cancel_pending"].format(desc=bet['desc'][:20]), callback_data=f"cancel_pending|{bet['id']}")])
-        else:
-            text += TEXTS["no_pending_bets"]
-        keyboard.append([InlineKeyboardButton(TEXTS["back"], callback_data="cancel")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await safe_edit(text, reply_markup=reply_markup)
+        await show_pending_bets(query, context, safe_edit)
         return
     if query.data.startswith("cancel_pending|") and not query.data.startswith("cancel_pending_confirm|"):
         bet_id = query.data.split("|", 1)[1]
-        pending_bets = context.user_data.get("pending_bets", [
-            {"desc": "Serie A: Inter vs Milan, Away Win, 2.80, 75 EUR", "id": "1"},
-            {"desc": "Bundesliga: Bayern vs Dortmund, Home Win, 1.90, 120 EUR", "id": "2"},
-        ])
-        bet = next((b for b in pending_bets if b["id"] == bet_id), None)
-        if not bet:
-            await safe_edit(TEXTS["no_pending_bets"])
-            return
-        keyboard = [
-            [InlineKeyboardButton(TEXTS["yes-cancel"], callback_data=f"cancel_pending_confirm|{bet_id}"),
-             InlineKeyboardButton(TEXTS["no"], callback_data="pending_bets")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await safe_edit(f"{TEXTS['confirm_cancel_pending']}\n\n{bet['desc']}", reply_markup=reply_markup)
+        await show_pending_cancel_confirm(query, context, safe_edit, bet_id)
         return
     if query.data.startswith("cancel_pending_confirm|"):
         bet_id = query.data.split("|", 1)[1]
-        pending_bets = context.user_data.get("pending_bets", [
-            {"desc": "Serie A: Inter vs Milan, Away Win, 2.80, 75 EUR", "id": "1"},
-            {"desc": "Bundesliga: Bayern vs Dortmund, Home Win, 1.90, 120 EUR", "id": "2"},
-        ])
-        pending_bets = [b for b in pending_bets if b["id"] != bet_id]
-        context.user_data["pending_bets"] = pending_bets
-        text = TEXTS["pending_bets_title"]
-        keyboard = []
-        if pending_bets:
-            for bet in pending_bets:
-                text += f"- {bet['desc']}\n"
-                keyboard.append([InlineKeyboardButton(TEXTS["cancel_pending"].format(desc=bet['desc'][:20]), callback_data=f"cancel_pending|{bet['id']}")])
-        else:
-            text += TEXTS["no_pending_bets"]
-        keyboard.append([InlineKeyboardButton(TEXTS["back"], callback_data="cancel")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await safe_edit(text, reply_markup=reply_markup)
+        await handle_pending_cancel_confirm(query, context, safe_edit, bet_id)
         return
     if query.data == "back_to_sports":
         sports = fetch_sports()
