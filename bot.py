@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from handlers import start, button_handler, cancel
 from choose_sport import handle_bet_amount_input
 from threading import Thread
-from wake_up_server import run_flask
+from oddsbot.wake_up_server import run_flask
 
 load_dotenv()
 
